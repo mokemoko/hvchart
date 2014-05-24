@@ -1,0 +1,153 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html>
+  <head>
+    <meta http-equiv="content-type" content="text/html; charset=utf-8">
+    <title>charts</title>
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.0.0-rc7.min.js"></script>
+    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
+    <script type="text/javascript" src="js/mongosetup.js"></script>
+    <script type="text/javascript">
+      var term = 1000 * 60 * 60 * 24 * 7; // 1week
+      var dynamo = new AWS.DynamoDB();
+      google.load("visualization", "1", {packages:["corechart"]});
+      google.setOnLoadCallback(drawChart);
+      var end = new Date();
+      var start = new Date(end.getTime() - term);
+
+      function drawChart() {
+        dynamo.query({
+            TableName: 'hvstat',
+            KeyConditions:{
+              // key
+              'type':{
+                AttributeValueList:[
+                  {'S':'8h'}
+                ],
+                ComparisonOperator:'EQ'
+              },
+              // range
+              'datetime':{
+                AttributeValueList:[
+                  {'N':yyyymmddhh(start)},
+                  {'N':yyyymmddhh(end)},
+                ],
+                ComparisonOperator:'BETWEEN'
+              }
+            },
+            AttributesToGet:['datetime','hath','gp','base']
+          },
+          function(err, res) {
+            if (err) {
+              alert(err);
+            } else {
+              // hath
+              var data = new google.visualization.DataTable();
+              var data2 = new google.visualization.DataTable();
+              var data3 = new google.visualization.DataTable();
+              var data4 = new google.visualization.DataTable();
+              var data5 = new google.visualization.DataTable();
+              data.addColumn('date', 'Date');    
+              data.addColumn('number', 'max');    
+              data.addColumn('number', 'avg');    
+              data.addColumn('number', 'min');    
+              data2.addColumn('date', 'Date');    
+              data2.addColumn('number', 'max');    
+              data2.addColumn('number', 'avg');    
+              data2.addColumn('number', 'min');    
+              data3.addColumn('date', 'Date');    
+              data3.addColumn('number', 'hath');    
+              data4.addColumn('date', 'Date');    
+              data4.addColumn('number', 'credit');    
+              data4.addColumn('number', 'assets');    
+              data5.addColumn('date', 'Date');    
+              data5.addColumn('number', 'gp');    
+
+              var items = res.Items;
+              for (var c in items) {
+                var dt = items[c].datetime.N;
+                var ary = items[c].hath.S.split('"');
+                var ary2 = items[c].gp.S.split('"');
+                var ary3 = items[c].base.S.split('"');
+                var day = new Date(dt.substr(0,4), dt.substr(4,2)-1, dt.substr(6,2), dt.substr(8,2));
+                var c_hath = (ary3[11]-0) * (ary[11]-0);
+                var c_gp = (ary3[3]-0) * (ary2[11]-0);
+
+                data.addRow([day, ary[3]-0, ary[11]-0, ary[15]-0]);
+                data2.addRow([day, ary2[3]-0, ary2[11]-0, ary2[15]-0]);
+                data3.addRow([day, ary3[11]-0]);
+                data4.addRow([day, ary3[7]-0, ary3[7]-0 + c_hath + c_gp]);
+                data5.addRow([day, ary3[3]-0]);
+              }
+
+              // hath
+              var chart = new google.visualization.LineChart(document.getElementById('chart_hath'));
+              chart.draw(data, {
+                  fontSize:'12',
+                  legendTextStyle: {color:'#666666',fontSize:'9'},
+                  title: 'hath rate',
+                  vAxis: {title: "credit"},
+                  hAxis: {title: "date"}
+              });
+
+              // gp
+              var chart2 = new google.visualization.LineChart(document.getElementById('chart_gp'));
+              chart2.draw(data2, {
+                  fontSize:'12',
+                  legendTextStyle: {color:'#666666',fontSize:'9'},
+                  title: 'gp rate',
+                  vAxis: {title: "credit"},
+                  hAxis: {title: "date"}
+              });
+
+              // myhath
+              var chart3 = new google.visualization.LineChart(document.getElementById('chart_myhath'));
+              chart3.draw(data3, {
+                  fontSize:'12',
+                  legendTextStyle: {color:'#666666',fontSize:'9'},
+                  title: 'own hath',
+                  vAxis: {title: "count"},
+                  hAxis: {title: "date"}
+              });
+
+              // mycredit
+              var chart4 = new google.visualization.LineChart(document.getElementById('chart_mycredit'));
+              chart4.draw(data4, {
+                  fontSize:'12',
+                  legendTextStyle: {color:'#666666',fontSize:'9'},
+                  title: 'own credit',
+                  vAxis: {title: "count"},
+                  hAxis: {title: "date"},
+                  series: {
+                    1: {targetAxisIndex: 1}
+                  }
+              });
+
+              // mygp
+              var chart5 = new google.visualization.LineChart(document.getElementById('chart_mygp'));
+              chart5.draw(data5, {
+                  fontSize:'12',
+                  legendTextStyle: {color:'#666666',fontSize:'9'},
+                  title: 'own gp',
+                  vAxis: {title: "count"},
+                  hAxis: {title: "date"}
+              });
+            }
+          });
+      }
+      function yyyymmddhh (dt){
+        var year = dt.getFullYear();
+        var month = ("0" + (dt.getMonth() + 1)).slice(-2);
+        var day = ("0" + dt.getDate()).slice(-2);
+        var hour = ("0" + dt.getHours()).slice(-2);
+        return "" + year + month + day + hour;
+      }
+    </script>
+  </head>
+  <body>
+    <div id="chart_hath"></div>
+    <div id="chart_gp"></div>
+    <div id="chart_myhath"></div>
+    <div id="chart_mycredit"></div>
+    <div id="chart_mygp"></div>
+  </body>
+<html>
