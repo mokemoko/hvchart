@@ -4,9 +4,13 @@
     <meta http-equiv="content-type" content="text/html; charset=utf-8">
     <title>charts</title>
     <script src="https://sdk.amazonaws.com/js/aws-sdk-2.0.0-rc7.min.js"></script>
-    <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-    <script type="text/javascript" src="js/mongosetup.js"></script>
-    <script type="text/javascript">
+    <script src="https://www.google.com/jsapi"></script>
+    <script src="js/mongosetup.js"></script>
+    <script src="js/localforage.js"></script>
+    <script>
+      window.onload = function() {
+        refreshDate();
+      }
       var term = 1000 * 60 * 60 * 24 * 7; // 1week
       var dynamo = new AWS.DynamoDB();
       google.load("visualization", "1", {packages:["corechart"]});
@@ -131,19 +135,26 @@
                   vAxis: {title: "count"},
                   hAxis: {title: "date"}
               });
+              localforage.setItem('last_update', new Date(), refreshDate);
             }
           });
       }
-      function yyyymmddhh (dt){
+      function yyyymmddhh(dt) {
         var year = dt.getFullYear();
         var month = ("0" + (dt.getMonth() + 1)).slice(-2);
         var day = ("0" + dt.getDate()).slice(-2);
         var hour = ("0" + dt.getHours()).slice(-2);
         return "" + year + month + day + hour;
       }
+      function refreshDate() {
+        localforage.getItem('last_update', function(e) { 
+          document.getElementById("last_update").innerHTML = "last_update: " + e;
+        });
+      }
     </script>
   </head>
   <body>
+    <div id="last_update"></div>
     <div id="chart_hath"></div>
     <div id="chart_gp"></div>
     <div id="chart_myhath"></div>
